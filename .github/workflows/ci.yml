@@ -1,0 +1,45 @@
+name: Full CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Build and Test
+      run: mvn clean test
+
+    - name: Run Checkstyle
+      run: mvn checkstyle:check
+
+    - name: Generate JaCoCo Report
+      run: mvn jacoco:report
+
+    - name: Upload JaCoCo Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: jacoco-report
+        path: target/site/jacoco/
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      run: |
+        mvn clean package -DskipTests
+        docker build -t myapp:${{ github.sha }} .
